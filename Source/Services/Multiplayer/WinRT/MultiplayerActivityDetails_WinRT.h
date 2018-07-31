@@ -36,7 +36,7 @@ public:
     DEFINE_PROP_GET_ENUM_OBJ(Visibility, visibility, MultiplayerSessionVisibility);
 
     /// <summary>
-    /// The join restriction of the session, which applies if visiblity is "open".
+    /// The join restriction of the session, which applies if visibility is "open".
     /// </summary>
     DEFINE_PROP_GET_ENUM_OBJ(JoinRestriction, join_restriction, MultiplayerSessionRestriction);
 
@@ -59,6 +59,11 @@ public:
     /// The number of slots occupied.
     /// </summary>
     DEFINE_PROP_GET_OBJ(MembersCount, members_count, uint32);
+
+    /// <summary>
+    /// String containing custom session properties JSON blob.
+    /// </summary>
+    DEFINE_PROP_GET_STR_FROM_JSON_OBJ(CustomSessionPropertiesJson, custom_session_properties_json);
 
 internal:
     MultiplayerActivityDetails(

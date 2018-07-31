@@ -32,6 +32,14 @@ Game::Game(const std::shared_ptr<DX::DeviceResources>& deviceResources) :
     m_deviceResources->RegisterDeviceNotify(this);
     m_sceneRenderer = std::unique_ptr<Renderer>(new Renderer(m_deviceResources));
     m_user = std::make_shared< xbox::services::system::xbox_live_user >();
+
+    xbox::services::system::xbox_live_services_settings::get_singleton_instance()->add_wns_handler([this](xbox::services::system::xbox_live_wns_event_args args)
+    {
+        Log(L"WNS notification received.");
+        Log(L"  type:" + args.notification_type());
+        Log(L"  xuid:" + args.xbox_user_id());
+        Log(L"  content:" + args.notification_content());
+    });
 }
 
 void Game::RegisterInputKeys()
@@ -43,6 +51,7 @@ void Game::RegisterInputKeys()
     m_input->RegisterKey(Windows::System::VirtualKey::Number3, ButtonPress::ToggleSocialGroup3);
     m_input->RegisterKey(Windows::System::VirtualKey::Number4, ButtonPress::ToggleSocialGroup4);
     m_input->RegisterKey(Windows::System::VirtualKey::Number5, ButtonPress::ToggleSocialGroup5);
+    m_input->RegisterKey(Windows::System::VirtualKey::P, ButtonPress::CallGetProfile);
     m_input->RegisterKey(Windows::System::VirtualKey::C, ButtonPress::ImportCustomList);
 }
 
@@ -145,6 +154,21 @@ void Game::OnGameUpdate()
             {
                 m_customList = !m_customList;
                 UpdateSocialGroupOfListForAllUsers(m_customList);
+            }
+
+            if (m_input->IsKeyDown(ButtonPress::CallGetProfile))
+            {
+                Log(L"Calling get_user_profile");
+                m_xboxLiveContext->profile_service().get_user_profile(m_xboxLiveContext->user()->xbox_user_id())
+                .then([this](xbox::services::xbox_live_result<xbox::services::social::xbox_user_profile> result)
+                {
+                    if (result.err())
+                        return;
+
+                    auto &payload = result.payload();
+
+                    Log(L"get_user_profile returned: " + payload.gamertag() + L" Gamerscore: " + payload.gamerscore());
+                });
             }
 
             if (m_input->IsKeyDown(ButtonPress::ImportCustomList))
@@ -546,6 +570,21 @@ void Game::UpdateSocialGroupOfList(
     }
 }
 
+Platform::String^ StringFormat(LPCWSTR strMsg, ...)
+{
+    WCHAR strBuffer[2048];
+
+    va_list args;
+    va_start(args, strMsg);
+    _vsnwprintf_s(strBuffer, 2048, _TRUNCATE, strMsg, args);
+    strBuffer[2047] = L'\0';
+
+    va_end(args);
+
+    Platform::String^ str = ref new Platform::String(strBuffer);
+    return str;
+}
+
 void Game::HandleSignInResult(
     _In_ const xbox::services::system::sign_in_result& result
     )
@@ -553,7 +592,21 @@ void Game::HandleSignInResult(
     switch (result.status())
     {
         case xbox::services::system::sign_in_status::success:
+            Log(L"xuid: "+ m_user->xbox_user_id());
             m_xboxLiveContext = std::make_shared< xbox::services::xbox_live_context >(m_user);
+
+            m_xboxLiveContext->settings()->add_service_call_routed_handler([this](xbox::services::xbox_service_call_routed_event_args args)
+            {
+                stringstream_t ss;
+                Log(L"service_call_routed_handler:");
+                ss << "[URL]: " << args.http_method().c_str() << " " << args.uri().c_str();
+                Log(ss.str());
+                ss << "[Response]: " << args.http_status() << " " << args.response_body().c_str();
+                Log(ss.str());
+            });
+            m_xboxLiveContext->settings()->set_enable_service_call_routed_events(true);
+            xbox::services::service_call_logging_config::get_singleton_instance()->enable();
+
             AddUserToSocialManager(m_user);
             Log(L"Sign in succeeded");
             break;
@@ -598,7 +651,9 @@ void Game::SignIn()
         }
         else
         {
-            pThis->Log(L"Failed signing in.");
+            std::stringstream ss;
+            ss << "Failed signing in" << t.err().value() << " ,msg: " << t.err_message();
+            pThis->Log(utility::conversions::to_utf16string(ss.str()));
         }
 
     }, task_continuation_context::use_current());

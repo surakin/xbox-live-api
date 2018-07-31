@@ -100,7 +100,7 @@ public:
     /// <returns>
     /// A function_context object that can be used to unregister the event handler.
     /// </returns>
-    _XSAPIIMP function_context add_service_call_routed_handler(_In_ std::function<void(const XBOX_LIVE_NAMESPACE::xbox_service_call_routed_event_args&)> handler);
+    _XSAPIIMP function_context add_service_call_routed_handler(_In_ std::function<void(const xbox::services::xbox_service_call_routed_event_args&)> handler);
 
     /// <summary>
     /// Unregisters from all service call notifications.
@@ -131,13 +131,13 @@ public:
     _XSAPIIMP_DEPRECATED void set_diagnostics_trace_level(_In_ xbox_services_diagnostics_trace_level value);
 
     /// <summary>
-    /// DEPRECATED.  This value is ignored and is now automatically calcuated to ensure the http_timeout_window() is obeyed
+    /// DEPRECATED.  This value is ignored and is now automatically calculated to ensure the http_timeout_window() is obeyed
     /// This means that calls will be more deterministic about the time window they return in.
     /// </summary>
     _XSAPIIMP const std::chrono::seconds& http_timeout() const;
 
     /// <summary>
-    /// DEPRECATED.  This value is ignored and is now automatically calcuated to ensure the http_timeout_window() is obeyed
+    /// DEPRECATED.  This value is ignored and is now automatically calculated to ensure the http_timeout_window() is obeyed
     /// This means that calls will be more deterministic about the time window they return in.
     /// </summary>
     _XSAPIIMP void set_http_timeout(_In_ std::chrono::seconds value);
@@ -276,6 +276,17 @@ public:
         _In_ xbox_live_context_recommended_setting setting
         );
 
+    /// <summary>
+    /// Gets whether to use the xplatqos server for qos calls.
+    /// </summary>
+    _XSAPIIMP bool use_crossplatform_qos_servers() const;
+
+    /// <summary>
+    /// Controls whether we use cross platform qos endpoints or not.
+    /// In some case if you are shipping with TV_API enabled, you want to be able to choose.
+    /// </summary>
+    _XSAPIIMP void set_use_crossplatform_qos_servers(_In_ bool value);
+
 public:
     // Internal public function
 #if UWP_API || UNIT_TEST_SERVICES
@@ -288,18 +299,7 @@ public:
     static Windows::UI::Core::CoreDispatcher^ _s_dispatcher;
 #endif
 
-#if (XSAPI_SERVER || UNIT_TEST_SYSTEM)
-    /// <summary>
-    /// Sets the SSL Cert
-    /// </summary>
-    static void _Set_SSL_cert(_In_ cert_context cert);
-
-    static cert_context _s_certContext;
-#endif
-
-    void _Raise_service_call_routed_event(_In_ const XBOX_LIVE_NAMESPACE::xbox_service_call_routed_event_args& result);
-    bool _Is_disable_asserts_for_xbox_live_throttling_in_dev_sandboxes();
-    bool _Is_disable_asserts_for_max_number_of_websockets_activated();
+    void _Raise_service_call_routed_event(_In_ const xbox::services::xbox_service_call_routed_event_args& result);
 
 private:
 
@@ -309,14 +309,10 @@ private:
     std::chrono::seconds m_httpRetryDelay;
     std::chrono::seconds m_httpTimeoutWindow;
 
-    std::mutex m_writeLock;
-    std::unordered_map<function_context, std::function<void(XBOX_LIVE_NAMESPACE::xbox_service_call_routed_event_args)>> m_serviceCallRoutedHandlers;
-    function_context m_serviceCallRoutedHandlersCounter;
-    
     std::chrono::seconds m_websocketTimeoutWindow;
     bool m_useCoreDispatcherForEventRouting;
-    bool m_disableAssertsForXboxLiveThrottlingInDevSandboxes;
-    bool m_disableAssertsForMaxNumberOfWebsocketsActivated;
+    
+    bool m_useXplatQosServer;
 };
 
 

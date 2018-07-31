@@ -804,7 +804,7 @@ public:
 
         web::json::value closed = propertiesSystemJson[L"closed"];
         VERIFY_ARE_EQUAL(result->Closed, closed.as_bool());
-
+        VERIFY_ARE_EQUAL(result->Locked, propertiesSystemJson[L"locked"].as_bool());
         VERIFY_ARE_EQUAL(result->AllocateCloudCompute, propertiesSystemJson[L"allocateCloudCompute"].as_bool());
 
         web::json::array keywords = propertiesSystemJson[L"keywords"].as_array();
@@ -1148,6 +1148,12 @@ public:
         VERIFY_ARE_EQUAL(result->Closed, relatedInfoJson[L"closed"].as_bool());
         VERIFY_ARE_EQUAL_INT(result->MaxMembersCount, relatedInfoJson[L"maxMembersCount"].as_integer());
         VERIFY_ARE_EQUAL_INT(result->MembersCount, relatedInfoJson[L"membersCount"].as_integer());
+
+        web::json::value customPropertiesJson = resultToVerify[L"customProperties"];
+        if (!customPropertiesJson.is_null())
+        {
+            VERIFY_ARE_EQUAL(result->CustomSessionPropertiesJson->Data(), customPropertiesJson.serialize());
+        }
     }
 
     void VerifyMultiplayerRoleInfo(MultiplayerRoleInfo^ result, web::json::value resultToVerify)
@@ -1238,6 +1244,12 @@ public:
         {
             auto key = ref new Platform::String(numbersMetadata.first.c_str());
             VERIFY_ARE_EQUAL(result->NumbersMetadata->Lookup(key), numbersMetadata.second.as_double());
+        }
+
+        web::json::value customPropertiesJson = resultToVerify[L"customProperties"];
+        if (!customPropertiesJson.is_null())
+        {
+            VERIFY_ARE_EQUAL(result->CustomSessionPropertiesJson->Data(), customPropertiesJson.serialize());
         }
 
         web::json::value relatedInfoJson = resultToVerify[L"relatedInfo"];
@@ -1378,7 +1390,7 @@ public:
             );
 
         auto actualJson = web::json::value::parse(actualJsonString);
-        auto requestJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto requestJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
 
         VERIFY_IS_EQUAL_JSON(requestJson, actualJson);
         uint32 counter = 0;
@@ -1429,13 +1441,14 @@ public:
         ).get();
 
         auto writeJson = web::json::value::parse(expectedJson);
-        auto requestJson = web::json::value::parse(httpCall->request_body().request_message_string());
-        TEST_LOG(httpCall->request_body().request_message_string().c_str());
+        auto requestJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
+        TEST_LOG(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()).c_str());
         VERIFY_IS_EQUAL_JSON(writeJson, requestJson);
     }
 
     void TryWriteSessionAsyncHelper(MultiplayerSession^ currentSession, bool shouldSucceed, int32_t httpStatus, bool returnEmpty = false)
     {
+        UNREFERENCED_PARAMETER(returnEmpty);
         auto responseJson = web::json::value::parse(defaultMultiplayerResponse);
 
         auto httpCall = m_mockXboxSystemFactory->GetMockHttpCall();
@@ -1661,7 +1674,7 @@ public:
 
         const string_t defaultJsonWrite = testResponseJsonFromFile[L"defaultJsonWrite"].serialize();
         auto writeJson = web::json::value::parse(defaultJsonWrite);
-        auto requestJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto requestJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
         VERIFY_IS_EQUAL_JSON(writeJson, requestJson);
     }
 
@@ -2233,12 +2246,25 @@ public:
 
         // can be set to true of false -- test both
         currentSession->SetClosed(true);
-
         WriteSessionAsyncHelper(currentSession, closedJsonTrue);
 
         currentSession->SetClosed(false);
         WriteSessionAsyncHelper(currentSession, closedJsonFalse);
 
+    }
+
+    TEST_METHOD(TestWriteSessionAsyncWithLocked)
+    {
+        DEFINE_TEST_CASE_PROPERTIES(TestWriteSessionAsyncWithLocked);
+        const string_t lockedJsonTrue = testResponseJsonFromFile[L"lockedJsonTrue"].serialize();
+        const string_t lockedJsonFalse = testResponseJsonFromFile[L"lockedJsonFalse"].serialize();
+
+        MultiplayerSession^ currentSession = GetCurrentSessionAsyncHelper();
+        currentSession->SetLocked(true);
+        WriteSessionAsyncHelper(currentSession, lockedJsonTrue);
+
+        currentSession->SetLocked(false);
+        WriteSessionAsyncHelper(currentSession, lockedJsonFalse);
     }
 
     DEFINE_TEST_CASE(TestWriteSessionAsyncWithSetCurrentUserQualityOfServiceMeasurements)
@@ -2430,7 +2456,7 @@ public:
             );
 
         auto writeJson = web::json::value::parse(activityJson);
-        auto requestJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto requestJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
         VERIFY_IS_EQUAL_JSON(writeJson, requestJson);
     }
 
@@ -2490,7 +2516,7 @@ public:
             );
 
         auto writeJson = web::json::value::parse(transferHandleJson);
-        auto requestJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto requestJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
         VERIFY_IS_EQUAL_JSON(writeJson, requestJson);
 
         web::json::value id = web::json::value::parse(transferHandleResponseJson)[_T("id")];
@@ -2520,7 +2546,7 @@ public:
         ).get();
 
         auto expectedJson = web::json::value::parse(searchHandlesRequestJson);
-        auto actualJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto actualJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
         VERIFY_ARE_EQUAL(expectedJson.serialize(), actualJson.serialize());
 
         auto resultJson = web::json::value::parse(searchHandlesResponseJson);
@@ -2558,7 +2584,7 @@ public:
             ).get();
 
         auto expectedJson = web::json::value::parse(searchHandlesRequestJson);
-        auto actualJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto actualJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
         VERIFY_ARE_EQUAL(expectedJson.serialize(), actualJson.serialize());
 
         auto resultJson = web::json::value::parse(searchHandlesResponseJson);
@@ -2597,7 +2623,7 @@ public:
         ).get();
 
         auto expectedJson = web::json::value::parse(searchHandlesWithSocialGroupRequestJson);
-        auto actualJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto actualJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
         VERIFY_ARE_EQUAL(expectedJson.serialize(), actualJson.serialize());
 
         auto resultJson = web::json::value::parse(searchHandlesResponseJson);
@@ -2649,7 +2675,7 @@ public:
         );
 
         auto writeJson = web::json::value::parse(searchHandleJson);
-        auto requestJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto requestJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()).data());
         VERIFY_IS_EQUAL_JSON(writeJson, requestJson);
     }
 
@@ -2700,7 +2726,7 @@ public:
             ).get();
 
         auto expectedJson = web::json::value::parse(inviteRequestJson);
-        auto actualJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto actualJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
 
         VERIFY_IS_EQUAL_JSON(expectedJson, actualJson);
 
@@ -2731,7 +2757,7 @@ public:
             ).get();
         
         auto expectedJson = web::json::value::parse(activitiesForUserRequestJson);
-        auto actualJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto actualJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
         VERIFY_ARE_EQUAL(expectedJson.serialize(), actualJson.serialize());
 
         auto resultJson = web::json::value::parse(activitiesForUserResponseJson);
@@ -2764,7 +2790,7 @@ public:
             ).get();
 
         auto expectedJson = web::json::value::parse(activitiesForSocialGroupRequestJson);
-        auto actualJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto actualJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
         VERIFY_ARE_EQUAL(expectedJson.serialize(), actualJson.serialize());
     }
 
@@ -2775,6 +2801,7 @@ public:
         MultiplayerSessionTestCreateInput input = GetDefaultMultiplayerSessionTestCreateInput();
         auto oldSession = TestCreateSessionHelper(input, GetMockXboxLiveContext_WinRT());
         oldSession->SetClosed(true);
+        oldSession->SetLocked(true);
         oldSession->SetSessionCustomPropertyJson(L"hello", L"goodbye");
         oldSession->Join();
 
@@ -2789,7 +2816,6 @@ public:
                 )
             );
 
-   
         uint32 changeType = static_cast<uint32>(MultiplayerSession::CompareMultiplayerSessions(oldSession, currentSession));
 
         VERIFY_IS_TRUE(static_cast<MultiplayerSessionChangeTypes>(static_cast<uint32>(MultiplayerSessionChangeTypes::MemberListChange) & changeType) == MultiplayerSessionChangeTypes::MemberListChange);
@@ -2809,6 +2835,14 @@ public:
         VERIFY_IS_TRUE(static_cast<MultiplayerSessionChangeTypes>(static_cast<uint32>(MultiplayerSessionChangeTypes::MemberCustomPropertyChange) & changeType) != MultiplayerSessionChangeTypes::MemberCustomPropertyChange);
     
         oldSession = TestCreateSessionHelper(input, GetMockXboxLiveContext_WinRT());
+        oldSession->SetClosed(true);
+        VERIFY_IS_TRUE(static_cast<MultiplayerSessionChangeTypes>(static_cast<uint32>(MultiplayerSessionChangeTypes::SessionJoinabilityChange) & changeType) != MultiplayerSessionChangeTypes::CustomPropertyChange);
+
+        oldSession = TestCreateSessionHelper(input, GetMockXboxLiveContext_WinRT());
+        oldSession->SetLocked(true);
+        VERIFY_IS_TRUE(static_cast<MultiplayerSessionChangeTypes>(static_cast<uint32>(MultiplayerSessionChangeTypes::SessionJoinabilityChange) & changeType) != MultiplayerSessionChangeTypes::CustomPropertyChange);
+
+        oldSession = TestCreateSessionHelper(input, GetMockXboxLiveContext_WinRT());
         currentSession = TestCreateSessionHelper(input, GetMockXboxLiveContext_WinRT());
         changeType = static_cast<uint32>(MultiplayerSession::CompareMultiplayerSessions(oldSession, currentSession));
 
@@ -2820,6 +2854,27 @@ public:
         VERIFY_IS_FALSE(static_cast<MultiplayerSessionChangeTypes>(static_cast<uint32>(MultiplayerSessionChangeTypes::CustomPropertyChange) & changeType) == MultiplayerSessionChangeTypes::CustomPropertyChange);
         VERIFY_IS_FALSE(static_cast<MultiplayerSessionChangeTypes>(static_cast<uint32>(MultiplayerSessionChangeTypes::MemberStatusChange) & changeType) == MultiplayerSessionChangeTypes::MemberStatusChange);
         VERIFY_IS_FALSE(static_cast<MultiplayerSessionChangeTypes>(static_cast<uint32>(MultiplayerSessionChangeTypes::MemberCustomPropertyChange) & changeType) == MultiplayerSessionChangeTypes::MemberCustomPropertyChange);
+
+        // Test MatchmakingStatusChange for different target session refs.
+        currentSession = ref new MultiplayerSession(
+            std::make_shared<multiplayer_session>(
+                sessionResult.payload()
+                )
+            );
+
+        const string_t responseForComparingSessions = testResponseJsonFromFile[L"MultiplayerResponseForComparingSessions"].serialize();
+        auto compareSessionResult = multiplayer_session::_Deserialize(
+            web::json::value::parse(responseForComparingSessions)
+            );
+        VERIFY_IS_TRUE(!compareSessionResult.err());
+        auto compareSession = ref new MultiplayerSession(
+            std::make_shared<multiplayer_session>(
+                compareSessionResult.payload()
+                )
+            );
+
+        changeType = static_cast<uint32>(MultiplayerSession::CompareMultiplayerSessions(currentSession, compareSession));
+        VERIFY_IS_TRUE(static_cast<MultiplayerSessionChangeTypes>(static_cast<uint32>(MultiplayerSessionChangeTypes::MatchmakingStatusChange) & changeType) == MultiplayerSessionChangeTypes::MatchmakingStatusChange);
     }
 
     DEFINE_TEST_CASE(TestRTAMultiplayer)
@@ -2843,7 +2898,7 @@ public:
         // Verify it should fail before RTA activated
         VERIFY_THROWS_HR_CX(
             create_task(xboxLiveContext->MultiplayerService->WriteSessionAsync(session, MultiplayerSessionWriteMode::CreateNew)).get(),
-            E_FAIL
+            E_XBL_RUNTIME_ERROR
             );
 
         // Connect RTA
@@ -2857,7 +2912,7 @@ public:
         //Make websocket auto reconnect
         // Write session on connection, make sure it can finish once connected
         mockSocket->m_waitForSignal = true;
-        mockSocket->m_closeHandler(1001, L"");
+        mockSocket->m_closeHandler(HCWebSocketCloseStatus_GoingAway);
         helper->connectingEvent.wait();
         TEST_LOG(L"Auto-reconnecting event triggered");
 
@@ -2916,7 +2971,7 @@ public:
             }
         });
 
-        mockSocket->m_closeHandler(1001, L"");
+        mockSocket->m_closeHandler(HCWebSocketCloseStatus_GoingAway);
         helper->connectingEvent.wait();
         helper->connectedEvent.wait();
         create_task(xboxLiveContext->MultiplayerService->WriteSessionAsync(session,MultiplayerSessionWriteMode::CreateNew)).get();
@@ -2930,7 +2985,7 @@ public:
         didFire = false;
         mockSocket->m_waitForSignal = false;
         mockSocket->m_connectToFail = true;
-        mockSocket->m_closeHandler(1001, L"");
+        mockSocket->m_closeHandler(HCWebSocketCloseStatus_GoingAway);
         helper->disconnectedEvent.wait();
 
         // should not be able to receive 
@@ -2946,7 +3001,7 @@ public:
         mockSocket->receive_rta_event(subId, rtaSessionUpdateJson);
         VERIFY_IS_FALSE(didFire);
 
-        mockSocket->close().wait();
+        mockSocket->close();
         VERIFY_IS_TRUE(didLostFire);
     }
 
@@ -3028,7 +3083,7 @@ public:
             ).get();
 
         auto writeJson = web::json::value::parse(setSessionChangeTypesJson);
-        auto requestJson = web::json::value::parse(httpCall->request_body().request_message_string());
+        auto requestJson = web::json::value::parse(utils::string_t_from_internal_string(httpCall->request_body().request_message_string()));
         requestJson[_T("members")][_T("me")][_T("properties")][_T("system")][_T("subscription")][_T("id")] = web::json::value::null();    // Can't test the id is a GUID
         VERIFY_IS_EQUAL_JSON(writeJson, requestJson);
     }
@@ -3345,7 +3400,7 @@ public:
                 session,
                 MultiplayerSessionWriteMode::UpdateOrCreateNew
                 )).get(),
-            E_FAIL
+            E_XBL_RUNTIME_ERROR
             );
 
         TEST_LOG(L"TestRTAConnectionFailed: Already enabled");
@@ -3494,27 +3549,27 @@ public:
         VERIFY_ARE_EQUAL_STR(nextGameSessionRef->SessionTemplateName, "bar");
         VERIFY_ARE_EQUAL_STR(nextGameSessionRef->SessionName, "session-seven");
 
-        auto member0 = currentSession->Members->GetAt(0);
-        VERIFY_IS_NOT_NULL(member0);
-
-        VERIFY_IS_NOT_NULL(member0->Results);
-        VERIFY_IS_TRUE(member0->Results->Size == 2);
-        for (auto item : member0->Results)
+        for (const auto& member : currentSession->Members)
         {
-            Platform::String^ key = item->Key;
-            TournamentTeamResult^ value = item->Value;
-            VERIFY_IS_TRUE(key->Equals("team1") || key->Equals("team2"));
-            VERIFY_IS_TRUE(value->State == TournamentGameResultState::Rank);
-            VERIFY_IS_TRUE(value->Ranking == 3 || value->Ranking == 2);
+            VERIFY_IS_NOT_NULL(member->Results);
+            VERIFY_IS_TRUE(member->Results->Size == 2);
+            for (auto result2 : member->Results)
+            {
+                Platform::String^ key = result2->Key;
+                TournamentTeamResult^ teamResult = result2->Value;
+                VERIFY_IS_TRUE(key->Equals("team1") || key->Equals("team2"));
+                VERIFY_IS_TRUE(teamResult->State == TournamentGameResultState::Rank);
+                VERIFY_IS_TRUE(teamResult->Ranking == 3 || teamResult->Ranking == 2);
+            }
+
+            VERIFY_IS_TRUE(member->ArbitrationStatus == TournamentArbitrationStatus::Joining);
+
+            auto teamSessionRef = member->TournamentTeamSessionRef;
+            VERIFY_IS_NOT_NULL(teamSessionRef);
+            VERIFY_ARE_EQUAL_STR(teamSessionRef->ServiceConfigurationId, "TestScid");
+            VERIFY_ARE_EQUAL_STR(teamSessionRef->SessionTemplateName, "TournamentGameSessionTest");
+            VERIFY_ARE_EQUAL_STR(teamSessionRef->SessionName, "TestName");
         }
-
-        VERIFY_IS_TRUE(member0->ArbitrationStatus == TournamentArbitrationStatus::Playing);
-
-        auto teamSessionRef = member0->TournamentTeamSessionRef;
-        VERIFY_IS_NOT_NULL(teamSessionRef);
-        VERIFY_ARE_EQUAL_STR(teamSessionRef->ServiceConfigurationId, "TestScid");
-        VERIFY_ARE_EQUAL_STR(teamSessionRef->SessionTemplateName, "TournamentGameSessionTest");
-        VERIFY_ARE_EQUAL_STR(teamSessionRef->SessionName, "TestName");
     }
 
     DEFINE_TEST_CASE(TestWriteSessionAsyncWithSetCurrentUserArbitrationResult)

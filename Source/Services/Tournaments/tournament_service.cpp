@@ -51,7 +51,7 @@ tournament_service::_Get_tournaments(
     _In_ const string_t& nextLinkUrl
     )
 {
-    return get_tournaments_internal(nextLinkUrl, L"");
+    return get_tournaments_internal(nextLinkUrl, _T(""));
 }
 
 pplx::task<xbox::services::xbox_live_result<tournament_request_result>>
@@ -154,7 +154,7 @@ tournament_service::_Get_teams(
     _In_ const string_t& nextLinkUrl
     )
 {
-    return get_teams_internal(nextLinkUrl, L"");
+    return get_teams_internal(nextLinkUrl, _T(""));
 }
 
 pplx::task<xbox::services::xbox_live_result<team_request_result>>
@@ -272,16 +272,17 @@ tournament_service::tournament_sub_path_url(
     )
 {
     web::uri_builder subPathBuilder;
+    string_t xuid = utils::string_t_from_internal_string(m_userContext->xbox_user_id());
 
     stringstream_t path;
     path << _T("/tournaments");
     subPathBuilder.set_path(path.str());
 
     subPathBuilder.append_query(_T("titleId"), m_appConfig->title_id());
-    subPathBuilder.append_query(_T("teamForMember"), m_userContext->xbox_user_id());
+    subPathBuilder.append_query(_T("teamForMember"), xuid);
     if (request.filter_results_for_user())
     {
-        subPathBuilder.append_query(_T("memberId"), m_userContext->xbox_user_id());
+        subPathBuilder.append_query(_T("memberId"), xuid);
     }
 
     if (!request.organizer_id().empty())
@@ -295,7 +296,7 @@ tournament_service::tournament_sub_path_url(
         for (const auto& state : request.state_filter())
         {
             statesArray += convert_tournament_state_to_string(state);
-            statesArray += L",";
+            statesArray += _T(",");
         }
         statesArray.erase(statesArray.end() - 1, statesArray.end()); // remove the last ','
         subPathBuilder.append_query(_T("state"), statesArray);
@@ -334,7 +335,7 @@ tournament_service::team_sub_path_url(
 
     if (request.filter_results_for_user())
     {
-        subPathBuilder.append_query(_T("memberId"), m_userContext->xbox_user_id());
+        subPathBuilder.append_query(_T("memberId"), utils::string_t_from_internal_string(m_userContext->xbox_user_id()));
     }
 
     if (request.max_items() > 0)
@@ -348,7 +349,7 @@ tournament_service::team_sub_path_url(
         for (const auto& state : request.state_filter())
         {
             statesArray += convert_team_state_to_string(state);
-            statesArray += L",";
+            statesArray += _T(",");
         }
         statesArray.erase(statesArray.end() - 1, statesArray.end()); // remove the last ','
         subPathBuilder.append_query(_T("state"), statesArray);

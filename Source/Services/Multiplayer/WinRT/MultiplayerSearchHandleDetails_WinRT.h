@@ -72,7 +72,7 @@ public:
     DEFINE_PROP_GET_ENUM_OBJ(Visibility, visibility, MultiplayerSessionVisibility);
 
     /// <summary>
-    /// The join restriction of the session, which applies if visiblity is "open".
+    /// The join restriction of the session, which applies if visibility is "open".
     /// </summary>
     DEFINE_PROP_GET_ENUM_OBJ(JoinRestriction, join_restriction, MultiplayerSessionRestriction);
 
@@ -95,6 +95,11 @@ public:
     /// The time when the search handle was posted.
     /// </summary>
     DEFINE_PROP_GET_DATETIME_OBJ(HandleCreationTime, handle_creation_time);
+
+    /// <summary>
+    /// String containing custom session properties JSON blob.
+    /// </summary>
+    DEFINE_PROP_GET_STR_FROM_JSON_OBJ(CustomSessionPropertiesJson, custom_session_properties_json);
 
 internal:
     MultiplayerSearchHandleDetails(
